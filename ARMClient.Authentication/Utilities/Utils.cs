@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -9,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using ARMClient.Authentication.AADAuthentication;
 using ARMClient.Authentication.Contracts;
+using Brotli;
 using Newtonsoft.Json.Linq;
 
 namespace ARMClient.Authentication.Utilities
@@ -32,10 +34,10 @@ namespace ARMClient.Authentication.Utilities
             return Environment.GetEnvironmentVariable("ARMCLIENT_TENANT") ?? Constants.AADCommonTenant;
         }
 
-        public static AzureEnvironments GetDefaultEnv()
+        public static string GetDefaultEnv()
         {
-            AzureEnvironments env;
-            return Enum.TryParse<AzureEnvironments>(Environment.GetEnvironmentVariable("ARMCLIENT_ENV"), true, out env) ? env : AzureEnvironments.Prod;
+            var env = Environment.GetEnvironmentVariable("ARMCLIENT_ENV");
+            return !string.IsNullOrEmpty(env) ? env : Constants.ARMProdEnv;
         }
 
         public static string GetDefaultCachePath()
@@ -48,14 +50,24 @@ namespace ARMClient.Authentication.Utilities
             return Environment.GetEnvironmentVariable("ARMCLIENT_VERBOSE") == "1";
         }
 
+        public static bool GetSkipSslVerify()
+        {
+            return Environment.GetEnvironmentVariable("ARMCLIENT_SKIP_SSL_VERIFY") == "1";
+        }
+
+        public static bool GetDecodeResponse()
+        {
+            return Environment.GetEnvironmentVariable("ARMCLIENT_DECODE_RESPONSE") == "1";
+        }
+
         public static string GetDefaultStamp()
         {
-            return GetDefaultEnv() != AzureEnvironments.Dogfood ? null : Environment.GetEnvironmentVariable("ARMCLIENT_STAMP");
+            return !string.Equals(Constants.ARMDogfoodEnv, GetDefaultEnv(), StringComparison.OrdinalIgnoreCase) ? null : Environment.GetEnvironmentVariable("ARMCLIENT_STAMP");
         }
 
         public static string GetDefaultStampCert()
         {
-            return GetDefaultEnv() != AzureEnvironments.Dogfood ? null : Environment.GetEnvironmentVariable("ARMCLIENT_STAMPCERT");
+            return !string.Equals(Constants.ARMDogfoodEnv, GetDefaultEnv(), StringComparison.OrdinalIgnoreCase) ? null : Environment.GetEnvironmentVariable("ARMCLIENT_STAMPCERT");
         }
 
         public static void SetTraceListener(TraceListener listener)
@@ -109,7 +121,7 @@ namespace ARMClient.Authentication.Utilities
                     client.DefaultRequestHeaders.Add("x-ms-version", "2013-10-01", headers);
                 }
 
-                if (Utils.IsCSM(uri))
+                if (Utils.IsARM(uri))
                 {
                     var stamp = GetDefaultStamp();
                     if (!String.IsNullOrEmpty(stamp))
@@ -212,7 +224,7 @@ namespace ARMClient.Authentication.Utilities
                     client.DefaultRequestHeaders.Add("x-ms-version", "2013-10-01");
                 }
 
-                if (Utils.IsCSM(uri))
+                if (Utils.IsARM(uri))
                 {
                     var stamp = GetDefaultStamp();
                     if (!String.IsNullOrEmpty(stamp))
@@ -255,14 +267,13 @@ namespace ARMClient.Authentication.Utilities
                 return ret;
             }
 
-            var env = persistentAuthHelper.IsCacheValid() ? persistentAuthHelper.AzureEnvironments : AzureEnvironments.Prod;
             var parts = path.Split(new[] { '/', '?' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length <= 0
                 || String.Equals(parts[0], "tenants", StringComparison.OrdinalIgnoreCase)
                 || String.Equals(parts[0], "subscriptions", StringComparison.OrdinalIgnoreCase)
                 || String.Equals(parts[0], "providers", StringComparison.OrdinalIgnoreCase))
             {
-                return new Uri(new Uri(ARMClient.Authentication.Constants.CSMUrls[(int)env]), path);
+                return new Uri(new Uri(persistentAuthHelper.ARMConfiguration.ARMUrl), path);
             }
 
             Guid guid;
@@ -270,35 +281,73 @@ namespace ARMClient.Authentication.Utilities
             {
                 if (path.Length > 1 && String.Equals(parts[1], "services", StringComparison.OrdinalIgnoreCase))
                 {
-                    return new Uri(new Uri(ARMClient.Authentication.Constants.RdfeUrls[(int)env]), path);
+                    return new Uri(new Uri(persistentAuthHelper.ARMConfiguration.RDFEUrl), path);
                 }
             }
 
-            return new Uri(new Uri(ARMClient.Authentication.Constants.AADGraphUrls[(int)env]), path);
+            return new Uri(new Uri(persistentAuthHelper.ARMConfiguration.AADGraphUrl), path);
         }
 
         public static bool IsRdfe(Uri uri)
         {
             var host = uri.Host;
-            return Constants.RdfeUrls.Any(url => url.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0);
+            return ARMConfiguration.Current.RDFEUrl.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0;
         }
 
         public static bool IsGraphApi(Uri uri)
         {
             var host = uri.Host;
-            return Constants.AADGraphUrls.Any(url => url.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0);
+            return ARMConfiguration.Current.AADGraphUrl.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0;
         }
 
-        public static bool IsCSM(Uri uri)
+        public static bool IsARM(Uri uri)
         {
             var host = uri.Host;
-            return Constants.CSMUrls.Any(url => url.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0);
+            return ARMConfiguration.Current.ARMUrl.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0;
         }
 
         public static bool IsKeyVault(Uri uri)
         {
             var host = uri.Host;
-            return host.EndsWith(".vault.azure.net", StringComparison.OrdinalIgnoreCase);
+            return host.IndexOf(new Uri(ARMConfiguration.Current.KeyVaultResource).Host, StringComparison.OrdinalIgnoreCase) > 0;
+        }
+
+        public static async Task<string> ReadAndDecodeAsStringAsync(this HttpContent content)
+        {
+            var autoDecode = GetDecodeResponse();
+            var contentEncoding = content.Headers.ContentEncoding;
+            if (autoDecode)
+            {
+                if (contentEncoding.Any(enc => string.Equals("gzip", enc, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var stream = new GZipStream(await content.ReadAsStreamAsync(), CompressionMode.Decompress);
+                    using (var memory = new MemoryStream())
+                    {
+                        await stream.CopyToAsync(memory);
+                        await memory.FlushAsync();
+                        return Encoding.UTF8.GetString(memory.ToArray());
+                    }
+                }
+                else if (contentEncoding.Any(enc => string.Equals("br", enc, StringComparison.OrdinalIgnoreCase))
+                    || contentEncoding.Any(enc => string.Equals("brotli", enc, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var stream = new BrotliStream(await content.ReadAsStreamAsync(), CompressionMode.Decompress);
+                    using (var memory = new MemoryStream())
+                    {
+                        await stream.CopyToAsync(memory);
+                        await memory.FlushAsync();
+                        return Encoding.UTF8.GetString(memory.ToArray());
+                    }
+                }
+            }
+
+            if (contentEncoding.Any())
+            {
+                Console.WriteLine("[ Content is {0} encoding.  Set ARMCLIENT_DECODE_RESPONSE=1 env to automatically decode the content ]", string.Join(", ", contentEncoding));
+                Console.WriteLine();
+            }
+
+            return await content.ReadAsStringAsync();
         }
     }
 }

@@ -9,8 +9,13 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ARMClient.Authentication</RootNamespace>
     <AssemblyName>ARMClient.Authentication</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+    <!--
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+    -->
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -30,6 +35,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Brotli.Core, Version=2.0.4.2, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Brotli.NET.2.0.4.2\lib\net45\Brotli.Core.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.IdentityModel.Clients.ActiveDirectory, Version=2.14.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Microsoft.IdentityModel.Clients.ActiveDirectory.2.14.201151115\lib\net45\Microsoft.IdentityModel.Clients.ActiveDirectory.dll</HintPath>
@@ -45,12 +53,17 @@
     <Reference Include="System" />
     <Reference Include="System.configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.IdentityModel" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Net.Http.Formatting, Version=5.2.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Microsoft.AspNet.WebApi.Client.5.2.2\lib\net45\System.Net.Http.Formatting.dll</HintPath>
     </Reference>
+    <Reference Include="System.Runtime.InteropServices.RuntimeInformation, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.InteropServices.RuntimeInformation.4.3.0\lib\net45\System.Runtime.InteropServices.RuntimeInformation.dll</HintPath>
+    </Reference>
     <Reference Include="System.Security" />
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -61,9 +74,9 @@
     <Compile Include="AADAuthentication\AuthHelper.cs" />
     <Compile Include="AADAuthentication\BaseAuthHelper.cs" />
     <Compile Include="AADAuthentication\PersistentAuthHelper.cs" />
+    <Compile Include="ARMConfiguration.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Contracts\AzAccessToken.cs" />
-    <Compile Include="Contracts\AzureEnvironments.cs" />
     <Compile Include="Contracts\ResultOf.cs" />
     <Compile Include="Contracts\SubscriptionCacheInfo.cs" />
     <Compile Include="Contracts\SubscriptionInfo.cs" />
@@ -84,13 +97,33 @@
     <Compile Include="TokenStorage\FileTokenStorage.cs" />
     <Compile Include="TokenStorage\ITokenStorage.cs" />
     <Compile Include="TokenStorage\MemoryTokenStorage.cs" />
+    <Compile Include="Utilities\JwtHelper.cs" />
     <Compile Include="Utilities\ProtectedFile.cs" />
     <Compile Include="Utilities\Utils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\packages\Brotli.NET.2.0.4.2\runtimes\win\native\brolib_x64.dll">
+      <Link>brolib_x64.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\packages\Brotli.NET.2.0.4.2\runtimes\win\native\brolib_x86.dll">
+      <Link>brolib_x86.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!--
+  <Import Project="..\packages\Brotli.NET.2.0.4.2\build\Brotli.NET.targets" Condition="Exists('..\packages\Brotli.NET.2.0.4.2\build\Brotli.NET.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Brotli.NET.2.0.4.2\build\Brotli.NET.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Brotli.NET.2.0.4.2\build\Brotli.NET.targets'))" />
+  </Target>
+  -->
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

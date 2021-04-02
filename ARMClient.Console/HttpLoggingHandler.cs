@@ -2,12 +2,11 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml;
 using System.Xml.Linq;
 using ARMClient.Authentication;
+using ARMClient.Authentication.Utilities;
 using Newtonsoft.Json.Linq;
 
 namespace ARMClient
@@ -29,6 +28,11 @@ namespace ARMClient
             const ConsoleColor successColor = ConsoleColor.Green;
             const ConsoleColor failureColor = ConsoleColor.Red;
 
+            if (InnerHandler is WinHttpHandler)
+            {
+                request.Version = new Version(2, 0);
+            }
+
             ConsoleColor originalColor = Console.ForegroundColor;
             if (_verbose)
             {
@@ -46,6 +50,7 @@ namespace ARMClient
                 {
                     Console.ForegroundColor = originalColor;
                 }
+
                 foreach (var header in request.Headers)
                 {
                     originalColor = Console.ForegroundColor;
@@ -55,9 +60,13 @@ namespace ARMClient
                         Console.Write("{0}: ", header.Key);
                         Console.ForegroundColor = headerValueColor;
                         if (String.Equals("Authorization", header.Key))
+                        {
                             Console.WriteLine(header.Value.First().Substring(0, 20) + "...");
+                        }
                         else
+                        {
                             Console.WriteLine(String.Join("; ", header.Value));
+                        }
                     }
                     finally
                     {
@@ -141,7 +150,7 @@ namespace ARMClient
                 return;
             }
 
-            var result = await content.ReadAsStringAsync();
+            var result = await content.ReadAndDecodeAsStringAsync();
             if (content.Headers.ContentType.MediaType.Contains(Constants.JsonContentType))
             {
                 try

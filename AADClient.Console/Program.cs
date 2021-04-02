@@ -26,7 +26,7 @@ namespace ARMClient
             try
             {
                 var persistentAuthHelper = new PersistentAuthHelper();
-                persistentAuthHelper.AzureEnvironments = Utils.GetDefaultEnv();
+                persistentAuthHelper.SetAzureEnvironment(Utils.GetDefaultEnv());
                 if (args.Length > 0)
                 {
                     var _parameters = new CommandLineParameters(args);
@@ -45,6 +45,13 @@ namespace ARMClient
 
                         X509Certificate2 certificate = null;
                         var appKey = _parameters.Get(3, keyName: "appKey", requires: false);
+                        string resource = null;
+                        if (Uri.TryCreate(appKey, UriKind.Absolute, out _))
+                        {
+                            resource = appKey;
+                            appKey = _parameters.Get(4, keyName: "appKey", requires: false);
+                        }
+
                         if (appKey == null)
                         {
                             appKey = PromptForPassword("appKey");
@@ -70,10 +77,9 @@ namespace ARMClient
 
                         _parameters.ThrowIfUnknown();
 
-                        persistentAuthHelper.AzureEnvironments = Utils.GetDefaultEnv();
                         var info = certificate != null ?
-                            AADHelper.AcquireTokenByX509(tenantId, appId, certificate).Result :
-                            AADHelper.AcquireTokenBySPN(tenantId, appId, appKey).Result;
+                            AADHelper.AcquireTokenByX509(tenantId, appId, certificate, resource).Result :
+                            AADHelper.AcquireTokenBySPN(tenantId, appId, appKey, resource).Result;
                         Clipboard.SetText(info.access_token);
                         DumpClaims(info.access_token);
                         Console.WriteLine();
@@ -90,7 +96,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, "get", Utils.GetDefaultVerbose(), null, headers).Result;
                     }
@@ -104,7 +110,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, "get", Utils.GetDefaultVerbose(), null, headers).Result;
                     }
@@ -118,7 +124,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, "get", Utils.GetDefaultVerbose(), null, headers).Result;
                     }
@@ -140,7 +146,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, "get", Utils.GetDefaultVerbose(), null, headers).Result;
                     }
@@ -158,7 +164,7 @@ namespace ARMClient
                             : String.Format("/{0}/applications?$filter=displayName eq '{1}'&api-version=1.6", tenant, app);
 
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         var subscriptionId = GetTenantOrSubscription(uri);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, "get", Utils.GetDefaultVerbose(), null, headers).Result;
@@ -177,7 +183,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, "get", Utils.GetDefaultVerbose(), null, headers).Result;
                     }
@@ -228,7 +234,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
 
                         return HttpInvoke(uri, cacheInfo, "patch", Utils.GetDefaultVerbose(), content, headers).Result;
@@ -251,7 +257,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
 
                         return HttpInvoke(uri, cacheInfo, "patch", Utils.GetDefaultVerbose(), content, headers).Result;
@@ -266,7 +272,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, "get", Utils.GetDefaultVerbose(), null, headers).Result;
                     }
@@ -285,7 +291,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, "get", Utils.GetDefaultVerbose(), null, headers).Result;
                     }
@@ -300,7 +306,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         var content = new StringContent("{\"securityEnabledOnly\": false}", Encoding.UTF8, "application/json");
                         return HttpInvoke(uri, cacheInfo, "post", Utils.GetDefaultVerbose(), content, headers).Result;
@@ -315,7 +321,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, "get", Utils.GetDefaultVerbose(), null, headers).Result;
                     }
@@ -330,7 +336,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, "get", Utils.GetDefaultVerbose(), null, headers).Result;
                     }
@@ -345,7 +351,7 @@ namespace ARMClient
                         var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, "get", Utils.GetDefaultVerbose(), null, headers).Result;
                     }
@@ -362,7 +368,7 @@ namespace ARMClient
                         var userUri = new Uri(uri, string.Format("/{0}/directoryObjects/{1}", tenant, user));
 
                         var subscriptionId = GetTenantOrSubscription(uri);
-                        var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+                        var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         var content = new StringContent("{\"url\": \"" + userUri + "\"}", Encoding.UTF8, "application/json");
                         return HttpInvoke(uri, cacheInfo, "post", Utils.GetDefaultVerbose(), content, headers).Result;
@@ -394,7 +400,7 @@ namespace ARMClient
             var uri = EnsureAbsoluteUri(path, persistentAuthHelper);
 
             var subscriptionId = GetTenantOrSubscription(uri);
-            var resource = GetResource(uri, persistentAuthHelper.AzureEnvironments);
+            var resource = GetResource(uri, persistentAuthHelper.ARMConfiguration);
             TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
 
             var json = await Utils.HttpGet(uri, cacheInfo);
@@ -532,26 +538,24 @@ namespace ARMClient
                 return ret;
             }
 
-            var env = persistentAuthHelper.IsCacheValid() ? persistentAuthHelper.AzureEnvironments : Utils.GetDefaultEnv();
             var parts = path.Split(new[] { '/', '?' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length <= 0
                 || String.Equals(parts[0], "tenants", StringComparison.OrdinalIgnoreCase)
                 || String.Equals(parts[0], "subscriptions", StringComparison.OrdinalIgnoreCase)
                 || String.Equals(parts[0], "providers", StringComparison.OrdinalIgnoreCase))
             {
-                return new Uri(new Uri(ARMClient.Authentication.Constants.CSMUrls[(int)env]), path);
+                return new Uri(new Uri(persistentAuthHelper.ARMConfiguration.ARMUrl), path);
             }
 
-            Guid guid;
-            if (Guid.TryParse(parts[0], out guid))
+            if (Guid.TryParse(parts[0], out _))
             {
                 if (path.Length > 1 && String.Equals(parts[1], "services", StringComparison.OrdinalIgnoreCase))
                 {
-                    return new Uri(new Uri(ARMClient.Authentication.Constants.RdfeUrls[(int)env]), path);
+                    return new Uri(new Uri(persistentAuthHelper.ARMConfiguration.RDFEUrl), path);
                 }
             }
 
-            return new Uri(new Uri(ARMClient.Authentication.Constants.AADGraphUrls[(int)env]), path);
+            return new Uri(new Uri(persistentAuthHelper.ARMConfiguration.AADGraphUrl), path);
         }
 
         static void EnsureGuidFormat(string parameter)
@@ -900,89 +904,21 @@ namespace ARMClient
             }
         }
 
-        static AzureEnvironments GetAzureEnvironments(Uri uri, PersistentAuthHelper persistentAuthHelper)
-        {
-            var host = uri.Host;
-
-            var graphs = Constants.AADGraphUrls.Where(url => url.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0);
-            if (graphs.Count() > 1)
-            {
-                var env = persistentAuthHelper.AzureEnvironments;
-                if (Constants.AADGraphUrls[(int)env].IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0)
-                {
-                    return env;
-                }
-
-                env = Utils.GetDefaultEnv();
-                if (Constants.AADGraphUrls[(int)env].IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0)
-                {
-                    return env;
-                }
-            }
-
-            for (int i = 0; i < Constants.AADGraphUrls.Length; ++i)
-            {
-                var url = Constants.AADGraphUrls[i];
-                if (url.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0)
-                {
-                    return (AzureEnvironments)i;
-                }
-            }
-
-            for (int i = 0; i < Constants.CSMUrls.Length; ++i)
-            {
-                var url = Constants.CSMUrls[i];
-                if (url.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0)
-                {
-                    return (AzureEnvironments)i;
-                }
-            }
-
-            for (int i = 0; i < Constants.RdfeUrls.Length; ++i)
-            {
-                var url = Constants.RdfeUrls[i];
-                if (url.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0)
-                {
-                    return (AzureEnvironments)i;
-                }
-            }
-
-            for (int i = 0; i < Constants.SCMSuffixes.Length; ++i)
-            {
-                var suffix = Constants.SCMSuffixes[i];
-                if (host.IndexOf(suffix, StringComparison.OrdinalIgnoreCase) > 0)
-                {
-                    return (AzureEnvironments)i;
-                }
-            }
-
-            for (int i = 0; i < Constants.VsoSuffixes.Length; ++i)
-            {
-                var suffix = Constants.VsoSuffixes[i];
-                if (host.IndexOf(suffix, StringComparison.OrdinalIgnoreCase) > 0)
-                {
-                    return (AzureEnvironments)i;
-                }
-            }
-
-            return AzureEnvironments.Prod;
-        }
-
-        static string GetResource(Uri uri, AzureEnvironments env = AzureEnvironments.Prod)
+        static string GetResource(Uri uri, ARMConfiguration configuration)
         {
             try
             {
                 if (Utils.IsGraphApi(uri))
                 {
-                    return Constants.AADGraphUrls[(int)env];
+                    return configuration.AADGraphUrl;
                 }
 
                 if (Utils.IsKeyVault(uri))
                 {
-                    return Constants.KeyVaultResources[(int)env];
+                    return configuration.KeyVaultResource;
                 }
 
-                return Constants.CSMResources[(int)env];
+                return configuration.ARMResource;
             }
             catch (Exception ex)
             {

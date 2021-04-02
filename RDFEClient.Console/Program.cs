@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -54,22 +53,25 @@ namespace RDFEClient
             {
                 "  RDFEClient.exe Login",
                 "  RDFEClient.exe ListCache",
-                "  RDFEClient.exe GetDeployment subscriptionId serviceName slot",
-                "  RDFEClient.exe GetConfiguration subscriptionId serviceName slot",
-                "  RDFEClient.exe UpdateConfiguration subscriptionId serviceName slot content",
+                "  RDFEClient.exe GetDeployment subscriptionId serviceName",
+                "  RDFEClient.exe DeleteDeployment subscriptionId serviceName",
+                "  RDFEClient.exe GetConfiguration subscriptionId serviceName",
+                "  RDFEClient.exe UpdateConfiguration subscriptionId serviceName content",
                 "  RDFEClient.exe ListExtensions subscriptionId serviceName",
                 "  RDFEClient.exe GetExtension subscriptionId serviceName extensionId",
                 "  RDFEClient.exe AddExtension subscriptionId serviceName content",
                 "  RDFEClient.exe DeleteExtension subscriptionId serviceName extensionId",
                 "  RDFEClient.exe AddServiceTunnelingExtension subscriptionId serviceName",
-                "  RDFEClient.exe EnableServiceTunnelingExtension subscriptionId serviceName serviceName slot",
-                "  RDFEClient.exe DisableServiceTunnelingExtension subscriptionId serviceName serviceName slot",
-                "  RDFEClient.exe AddServiceTunnelingExtensionConfiguration subscriptionId serviceName serviceName slot",
+                "  RDFEClient.exe EnableServiceTunnelingExtension subscriptionId serviceName",
+                "  RDFEClient.exe DisableServiceTunnelingExtension subscriptionId serviceName",
+                "  RDFEClient.exe AddServiceTunnelingExtensionConfiguration subscriptionId serviceName",
                 "  RDFEClient.exe ListReservedIps subscriptionId",
                 "  RDFEClient.exe GetReservedIp subscriptionId reservedIpName",
                 "  RDFEClient.exe AddReservedIp subscriptionId reservedIpName location",
                 "  RDFEClient.exe DeleteReservedIp subscriptionId reservedIpName",
                 "  RDFEClient.exe GetOperation subscriptionId requestId",
+                "  RDFEClient.exe ListOperatingSystems subscriptionId",
+                "  RDFEClient.exe ListOperatingSystemFamilies subscriptionId",
             })
             {
                 if (string.IsNullOrEmpty(methodName) || cmd.IndexOf(" " + methodName + " ", StringComparison.OrdinalIgnoreCase) > 0)
@@ -96,20 +98,26 @@ namespace RDFEClient
             }
         }
 
-        static void GetDeployment(string subscriptionId, string serviceName, string slot)
+        static void GetDeployment(string subscriptionId, string serviceName)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
-            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/{2}", subscriptionId, serviceName, slot));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "get").Result)
+            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/Production", subscriptionId, serviceName));
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
             {
             }
         }
 
-        static void GetConfiguration(string subscriptionId, string serviceName, string slot)
+        static void DeleteDeployment(string subscriptionId, string serviceName)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
-            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/{2}", subscriptionId, serviceName, slot));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "get").Result)
+            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/Production", subscriptionId, serviceName));
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "delete").Result)
+            {
+            }
+        }
+
+        static void GetConfiguration(string subscriptionId, string serviceName)
+        {
+            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/Production", subscriptionId, serviceName));
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
             {
                 if (!response.IsSuccessStatusCode)
                 {
@@ -131,7 +139,7 @@ namespace RDFEClient
             }
         }
 
-        static void UpdateConfiguration(string subscriptionId, string serviceName, string slot, string content)
+        static void UpdateConfiguration(string subscriptionId, string serviceName, string content)
         {
             var payload = content;
             if (File.Exists(content))
@@ -149,36 +157,24 @@ namespace RDFEClient
 ", Convert.ToBase64String(Encoding.UTF8.GetBytes(XDocument.Parse(payload).ToString(SaveOptions.DisableFormatting))));
             }
 
-            var authHeader = GetAuthorizationHeader(subscriptionId);
-            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/{2}/?comp=config", subscriptionId, serviceName, slot));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "post", new StringContent(payload, Encoding.UTF8, "text/xml")).Result)
+            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/Production/?comp=config", subscriptionId, serviceName));
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "post", new StringContent(payload, Encoding.UTF8, "text/xml")).Result)
             {
             }
         }
 
-        static string GetAuthorizationHeader(string subscriptionId)
-        {
-            Utils.SetTraceListener(new ConsoleTraceListener());
-            var persistentAuthHelper = new PersistentAuthHelper();
-            var cacheInfo = persistentAuthHelper.GetToken(subscriptionId, "https://management.core.windows.net/").Result;
-            return cacheInfo.CreateAuthorizationHeader();
-
-        }
-
         static void ListExtensions(string subscriptionId, string serviceName)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
             var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/extensions", subscriptionId, serviceName));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "get").Result)
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
             {
             }
         }
 
         static void GetExtension(string subscriptionId, string serviceName, string extensionId)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
             var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/extensions/{2}", subscriptionId, serviceName, extensionId));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "get").Result)
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
             {
             }
         }
@@ -191,9 +187,8 @@ namespace RDFEClient
                 payload = File.ReadAllText(content);
             }
 
-            var authHeader = GetAuthorizationHeader(subscriptionId);
             var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/extensions", subscriptionId, serviceName));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "post", new StringContent(payload, Encoding.UTF8, "text/xml")).Result)
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "post", new StringContent(payload, Encoding.UTF8, "text/xml")).Result)
             {
             }
         }
@@ -204,27 +199,26 @@ namespace RDFEClient
 <Extension xmlns='http://schemas.microsoft.com/windowsazure'>
   <ProviderNameSpace>Microsoft.Azure.Networking.SDN</ProviderNameSpace>
   <Type>Aquarius</Type>
-  <Id>FrontEndRole-Aquarius-Production-Ext-0</Id>
+  <Id>FrontEndRole-Aquarius-Production-Ext-1</Id>
   <Thumbprint></Thumbprint>
   <ThumbprintAlgorithm></ThumbprintAlgorithm>
-  <PublicConfiguration>e30=</PublicConfiguration>
+  <PublicConfiguration>eyJQbHVnaW5zVG9FbmFibGUiOlsiU2VydmljZVR1bm5lbEV4dGVuc2lvbiJdfQ==</PublicConfiguration>
   <PrivateConfiguration>e30=</PrivateConfiguration>
-  <Version>3.4</Version>
+  <Version>4.2</Version>
 </Extension>";
 
-            var authHeader = GetAuthorizationHeader(subscriptionId);
             var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/extensions", subscriptionId, serviceName));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "post", new StringContent(payload, Encoding.UTF8, "text/xml")).Result)
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "post", new StringContent(payload, Encoding.UTF8, "text/xml")).Result)
             {
             }
         }
 
-        static void EnableServiceTunnelingExtension(string subscriptionId, string serviceName, string slot)
+        static void EnableServiceTunnelingExtension(string subscriptionId, string serviceName)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
-            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/{2}", subscriptionId, serviceName, slot));
+            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/Production", subscriptionId, serviceName));
             string base64Configuration;
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "get").Result)
+            string roleName;
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
             {
                 if (!response.IsSuccessStatusCode)
                 {
@@ -238,6 +232,13 @@ namespace RDFEClient
 
                 var configurationElem = deploymentElem.XPathSelectElement("/x:Deployment/x:Configuration", mgr);
                 base64Configuration = configurationElem.Value;
+
+                var serviceConfigurationElem = XDocument.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(base64Configuration))).Root;
+                var serviceConfigurationNs = serviceConfigurationElem.Name.Namespace;
+                var serviceConfigurationMgr = new XmlNamespaceManager(new NameTable());
+                serviceConfigurationMgr.AddNamespace("x", serviceConfigurationNs.NamespaceName);
+                roleName = null != serviceConfigurationElem.XPathSelectElement("/x:ServiceConfiguration/x:Role[@name='MultiRole']", serviceConfigurationMgr)
+                    ? "MultiRole" : "FrontEndRole";
             }
 
             var payload = string.Format(@"
@@ -248,26 +249,26 @@ namespace RDFEClient
   <ExtensionConfiguration>
     <NamedRoles>
       <Role>
-        <RoleName>FrontEndRole</RoleName>
+        <RoleName>{1}</RoleName>
         <Extensions>
           <Extension>
-            <Id>FrontEndRole-Aquarius-Production-Ext-0</Id>
+            <Id>FrontEndRole-Aquarius-Production-Ext-1</Id>
           </Extension>
         </Extensions>
       </Role>
     </NamedRoles>
   </ExtensionConfiguration>
-</ChangeConfiguration>", base64Configuration);
+</ChangeConfiguration>", base64Configuration, roleName);
 
-            UpdateConfiguration(subscriptionId, serviceName, slot, payload);
+            UpdateConfiguration(subscriptionId, serviceName, payload);
         }
 
-        static void DisableServiceTunnelingExtension(string subscriptionId, string serviceName, string slot)
+        static void DisableServiceTunnelingExtension(string subscriptionId, string serviceName)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
-            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/{2}", subscriptionId, serviceName, slot));
+            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/Production", subscriptionId, serviceName));
             string base64Configuration;
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "get").Result)
+            string roleName;
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
             {
                 if (!response.IsSuccessStatusCode)
                 {
@@ -281,6 +282,13 @@ namespace RDFEClient
 
                 var configurationElem = deploymentElem.XPathSelectElement("/x:Deployment/x:Configuration", mgr);
                 base64Configuration = configurationElem.Value;
+
+                var serviceConfigurationElem = XDocument.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(base64Configuration))).Root;
+                var serviceConfigurationNs = serviceConfigurationElem.Name.Namespace;
+                var serviceConfigurationMgr = new XmlNamespaceManager(new NameTable());
+                serviceConfigurationMgr.AddNamespace("x", serviceConfigurationNs.NamespaceName);
+                roleName = null != serviceConfigurationElem.XPathSelectElement("/x:ServiceConfiguration/x:Role[@name='MultiRole']", serviceConfigurationMgr)
+                    ? "MultiRole" : "FrontEndRole";
             }
 
             var payload = string.Format(@"
@@ -291,36 +299,34 @@ namespace RDFEClient
   <ExtensionConfiguration>
     <NamedRoles>
       <Role>
-        <RoleName>FrontEndRole</RoleName>
+        <RoleName>{1}</RoleName>
         <Extensions>
           <Extension>
-            <Id>FrontEndRole-Aquarius-Production-Ext-0</Id>
+            <Id>FrontEndRole-Aquarius-Production-Ext-1</Id>
             <State>Disable</State>
           </Extension>
         </Extensions>
       </Role>
     </NamedRoles>
   </ExtensionConfiguration>
-</ChangeConfiguration>", base64Configuration);
+</ChangeConfiguration>", base64Configuration, roleName);
 
-            UpdateConfiguration(subscriptionId, serviceName, slot, payload);
+            UpdateConfiguration(subscriptionId, serviceName, payload);
         }
 
         static void DeleteExtension(string subscriptionId, string serviceName, string extensionId)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
             var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/extensions/{2}", subscriptionId, serviceName, extensionId));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "delete").Result)
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "delete").Result)
             {
             }
         }
 
-        static void AddServiceTunnelingExtensionConfiguration(string subscriptionId, string serviceName, string slot)
+        static void AddServiceTunnelingExtensionConfiguration(string subscriptionId, string serviceName)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
-            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/{2}", subscriptionId, serviceName, slot));
+            var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/hostedservices/{1}/deploymentslots/Production", subscriptionId, serviceName));
             XElement serviceConfigurationElem;
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "get").Result)
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
             {
                 if (!response.IsSuccessStatusCode)
                 {
@@ -357,13 +363,16 @@ namespace RDFEClient
                 var mgr = new XmlNamespaceManager(new NameTable());
                 mgr.AddNamespace("x", serviceConfigurationNs.NamespaceName);
 
+                var roleName = null != serviceConfigurationElem.XPathSelectElement("/x:ServiceConfiguration/x:Role[@name='MultiRole']", mgr)
+                    ? "MultiRole" : "FrontEndRole";
+
                 serviceTunnelingConfigurations = new XElement(serviceConfigurationNs.GetName("ServiceTunnelingConfigurations"));
-                foreach (var endpoint in serviceConfigurationElem.XPathSelectElements("/x:ServiceConfiguration/x:NetworkConfiguration/x:AddressAssignments/x:VirtualIPs/x:VirtualIP/x:Endpoints/x:Endpoint[@role='FrontEndRole' and contains(@name,'FrontEndPort')]", mgr))
+                foreach (var endpoint in serviceConfigurationElem.XPathSelectElements("/x:ServiceConfiguration/x:NetworkConfiguration/x:AddressAssignments/x:VirtualIPs/x:VirtualIP/x:Endpoints/x:Endpoint[@role='"+ roleName + "' and contains(@name,'FrontEndPort')]", mgr))
                 {
                     var endpointName = endpoint.Attributes().First(a => a.Name.LocalName == "name").Value;
                     serviceTunnelingConfigurations.Add(new XElement(serviceConfigurationNs.GetName("ServiceTunnelingConfiguration"),
                             new XAttribute("name", "ServiceTunneling-" + endpointName),
-                            new XAttribute("role", "FrontEndRole"),
+                            new XAttribute("role", roleName),
                             new XAttribute("endpoint", endpointName)
                         ));
                 }
@@ -375,62 +384,30 @@ namespace RDFEClient
 
                 networkConfiguration.Add(serviceTunnelingConfigurations);
 
-                UpdateConfiguration(subscriptionId, serviceName, slot, serviceConfigurationElem.ToString());
+                UpdateConfiguration(subscriptionId, serviceName, serviceConfigurationElem.ToString());
             }
         }
 
         static void ListReservedIps(string subscriptionId)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
             var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/networking/reservedips", subscriptionId));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "get").Result)
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
             {
             }
         }
 
         static void GetReservedIp(string subscriptionId, string reservedIpName)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
             var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/networking/reservedips/{1}", subscriptionId, reservedIpName));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "get").Result)
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
             {
             }
         }
 
         static void AddReservedIp(string subscriptionId, string reservedIpName, string location)
         {
-            Dictionary<string, string> locationZones = new Dictionary<string, string>
-            {
-                { "East US", "useast-AZ01" },
-                { "East US 2 EUAP", "useast2euap-AZ02" },
-                //{ "East US 2 EUAP", "" },
-                //{ "North Central US", "usnorth-NONE" },
-                { "North Central US", "" }
-            };
-
-            var pair = locationZones.FirstOrDefault(p => string.Equals(p.Key, location, StringComparison.OrdinalIgnoreCase));
-            if (string.IsNullOrEmpty(pair.Key))
-            {
-                throw new InvalidOperationException("Unknown AvailabilityZone for " + location + " location!");
-            }
-
-            var payload = !string.IsNullOrEmpty(pair.Value) ? string.Format(@"
-<ReservedIP xmlns='http://schemas.microsoft.com/windowsazure'>
-  <Name>{0}</Name>
-  <Label>AppServiceReservedIp</Label>
-  <DeploymentName></DeploymentName>
-  <Location>{1}</Location>
-  <IPTags>
-    <IPTag>
-      <IPTagType>FirstPartyUsage</IPTagType>
-      <Value>/AppService</Value>
-    </IPTag>
-    <IPTag>
-      <IPTagType>AvailabilityZone</IPTagType>
-      <Value>{2}</Value>
-    </IPTag>
-  </IPTags>
-</ReservedIP>", reservedIpName, pair.Key, pair.Value) : string.Format(@"
+            // NOTE: another valid tag is /AppServiceManagement
+            var payload = string.Format(@"
 <ReservedIP xmlns='http://schemas.microsoft.com/windowsazure'>
   <Name>{0}</Name>
   <Label>AppServiceReservedIp</Label>
@@ -442,30 +419,43 @@ namespace RDFEClient
       <Value>/AppService</Value>
     </IPTag>
   </IPTags>
-</ReservedIP>", reservedIpName, pair.Key);
+</ReservedIP>", reservedIpName, location);
 
-            var authHeader = GetAuthorizationHeader(subscriptionId);
             var content = new StringContent(payload, Encoding.UTF8, "text/xml");
             var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/networking/reservedips", subscriptionId));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "post", content).Result)
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "post", content).Result)
             {
             }
         }
 
         static void DeleteReservedIp(string subscriptionId, string reservedIpName)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
             var uri = new Uri(string.Format("https://management.core.windows.net/{0}/services/networking/reservedips/{1}", subscriptionId, reservedIpName));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "delete").Result)
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "delete").Result)
             {
             }
         }
 
         static void GetOperation(string subscriptionId, string requestId)
         {
-            var authHeader = GetAuthorizationHeader(subscriptionId);
             var uri = new Uri(string.Format("https://management.core.windows.net/{0}/operations/{1}", subscriptionId, requestId));
-            using (var response = RDFEClient.HttpInvoke(uri, authHeader, "get").Result)
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
+            {
+            }
+        }
+
+        static void ListOperatingSystems(string subscriptionId)
+        {
+            var uri = new Uri($"https://management.core.windows.net/{subscriptionId}/operatingsystems");
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
+            {
+            }
+        }
+
+        static void ListOperatingSystemFamilies(string subscriptionId)
+        {
+            var uri = new Uri($"https://management.core.windows.net/{subscriptionId}/operatingsystemfamilies");
+            using (var response = RDFEClient.HttpInvoke(uri, subscriptionId, "get").Result)
             {
             }
         }
