@@ -1,7 +1,7 @@
 @echo off
 
 nuget restore -PackagesDirectory packages
-msbuild
+msbuild ARMClient.Console\ARMClient.Console.csproj /p:Configuration=Release
 
 md artifacts
 nuget pack -NoPackageAnalysis -OutputDirectory artifacts ARMClient.nuspec

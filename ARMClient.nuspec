@@ -3,7 +3,7 @@
   <metadata>
     <id>ARMClient</id>
     <title>ARMClient</title>
-    <version>1.9.0</version>
+    <version>1.10.0</version>
     <authors>Project Kudu contributors</authors>
     <summary>A simple command line tool to invoke the Azure Resource Manager API</summary>
     <description>A simple command line tool to invoke the Azure Resource Manager API</description>
@@ -14,8 +14,7 @@
     <releaseNotes></releaseNotes>
   </metadata>
   <files>
-    <file src="bin\debug\*.exe" target="tools" />
-    <file src="bin\debug\*.dll" target="tools" />
+    <file src="ARMClient.Console\bin\Release\net472\*.*" target="tools" />
     <file src="LICENSE.txt" target="tools" />
     <file src="VERIFICATION.txt" target="tools" />
   </files>
